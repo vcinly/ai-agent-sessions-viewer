@@ -5,8 +5,8 @@
  * 직접 수정하지 마세요.
  *
  * 생성 명령: pnpm run generate:i18n-types
- * 생성 시간: 2026-05-25T07:37:00.105Z
- * 총 키 개수: 1781
+ * 생성 시간: 2026-05-29T08:16:43.144Z
+ * 총 키 개수: 1782
  * Namespace 수: 11
  */
 
@@ -40,7 +40,7 @@ export type I18nNamespace =
   | 'recentEdits';
 
 /**
- * common namespace의 번역 키 (161개)
+ * common namespace의 번역 키 (162개)
  * 파일: locales/{lang}/common.json
  */
 export type CommonKeys =
@@ -108,6 +108,7 @@ export type CommonKeys =
   | 'common.ok'
   | 'common.pending'
   | 'common.provider.aider'
+  | 'common.provider.alma'
   | 'common.provider.antigravity'
   | 'common.provider.claude'
   | 'common.provider.cline'
@@ -2252,6 +2253,7 @@ export type TranslationKey =
   | 'common.ok'
   | 'common.pending'
   | 'common.provider.aider'
+  | 'common.provider.alma'
   | 'common.provider.antigravity'
   | 'common.provider.claude'
   | 'common.provider.cline'

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod aider;
+pub mod alma;
 pub mod antigravity;
 pub mod claude;
 pub mod cline;
@@ -15,6 +16,7 @@ pub mod opencode;
 #[serde(rename_all = "lowercase")]
 pub enum ProviderId {
     Aider,
+    Alma,
     Claude,
     Cline,
     Codex,
@@ -29,6 +31,7 @@ impl ProviderId {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Aider => "aider",
+            Self::Alma => "alma",
             Self::Claude => "claude",
             Self::Cline => "cline",
             Self::Codex => "codex",
@@ -43,6 +46,7 @@ impl ProviderId {
     pub fn parse(s: &str) -> Option<Self> {
         match s {
             "aider" => Some(Self::Aider),
+            "alma" => Some(Self::Alma),
             "claude" => Some(Self::Claude),
             "cline" => Some(Self::Cline),
             "codex" => Some(Self::Codex),
@@ -58,6 +62,7 @@ impl ProviderId {
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::Aider => "Aider",
+            Self::Alma => "Alma",
             Self::Claude => "Claude Code",
             Self::Cline => "Cline",
             Self::Codex => "Codex CLI",
@@ -105,6 +110,9 @@ pub fn detect_providers() -> Vec<ProviderInfo> {
         providers.push(info);
     }
     if let Some(info) = aider::detect() {
+        providers.push(info);
+    }
+    if let Some(info) = alma::detect() {
         providers.push(info);
     }
     if let Some(info) = antigravity::detect() {

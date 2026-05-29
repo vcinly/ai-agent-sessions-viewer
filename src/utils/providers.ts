@@ -1,6 +1,6 @@
 import type { ProviderId } from "../types";
 
-export const PROVIDER_IDS: ProviderId[] = ["aider", "antigravity", "claude", "cline", "codex", "cursor", "forgecode", "gemini", "opencode"];
+export const PROVIDER_IDS: ProviderId[] = ["aider", "alma", "antigravity", "claude", "cline", "codex", "cursor", "forgecode", "gemini", "opencode"];
 export const DEFAULT_PROVIDER_ID: ProviderId = "claude";
 
 const PROVIDER_TRANSLATIONS: Record<
@@ -8,6 +8,7 @@ const PROVIDER_TRANSLATIONS: Record<
   { key: string; fallback: string }
 > = {
   aider: { key: "common.provider.aider", fallback: "Aider" },
+  alma: { key: "common.provider.alma", fallback: "Alma" },
   antigravity: { key: "common.provider.antigravity", fallback: "Antigravity" },
   claude: { key: "common.provider.claude", fallback: "Claude Code" },
   cline: { key: "common.provider.cline", fallback: "Cline" },
@@ -31,6 +32,13 @@ export interface ProviderSessionCapability {
 const PROVIDER_SESSION_CAPABILITIES: Record<ProviderId, ProviderSessionCapability> = {
   aider: {
     supportsConversationBreakdown: false,
+    supportsNativeRename: false,
+    supportsResumeCommand: false,
+    supportsSessionDeletion: false,
+    supportsArchiveCreation: false,
+  },
+  alma: {
+    supportsConversationBreakdown: true,
     supportsNativeRename: false,
     supportsResumeCommand: false,
     supportsSessionDeletion: false,
@@ -109,6 +117,7 @@ export interface ConversationBreakdownCoverage {
 export function getProviderId(provider?: ProviderId | string): ProviderId {
   switch (provider) {
     case "aider":
+    case "alma":
     case "antigravity":
     case "cline":
     case "codex":
@@ -236,6 +245,7 @@ export const PROVIDER_BADGE_STYLES: Record<ProviderId, string> = {
   gemini: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
   opencode: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
   aider: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+  alma: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   antigravity: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
 };
 

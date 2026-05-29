@@ -118,6 +118,7 @@
   "common.update.skip": "跳过此版本",
   "common.update.upToDate": "已是最新版本",
   "common.provider.aider": "Aider",
+  "common.provider.alma": "Alma",
   "common.provider.claude": "Claude Code",
   "common.provider.cline": "Cline",
   "common.provider.codex": "Codex CLI",

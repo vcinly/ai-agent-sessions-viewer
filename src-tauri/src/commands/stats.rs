@@ -21,6 +21,7 @@ use walkdir::WalkDir;
 enum StatsProvider {
     #[default]
     Claude,
+    Alma,
     Codex,
     ForgeCode,
     OpenCode,
@@ -56,6 +57,7 @@ fn parse_stats_mode(stats_mode: Option<String>) -> StatsMode {
 fn stats_provider_id(provider: StatsProvider) -> &'static str {
     match provider {
         StatsProvider::Claude => "claude",
+        StatsProvider::Alma => "alma",
         StatsProvider::Codex => "codex",
         StatsProvider::ForgeCode => "forgecode",
         StatsProvider::OpenCode => "opencode",
@@ -209,6 +211,7 @@ fn should_include_stats_message(message: &ClaudeMessage, mode: StatsMode) -> boo
 fn all_stats_providers() -> HashSet<StatsProvider> {
     [
         StatsProvider::Claude,
+        StatsProvider::Alma,
         StatsProvider::Codex,
         StatsProvider::ForgeCode,
         StatsProvider::OpenCode,
@@ -229,6 +232,7 @@ fn parse_active_stats_providers(active_providers: Option<Vec<String>>) -> HashSe
         .into_iter()
         .filter_map(|provider| match provider.as_str() {
             "claude" => Some(StatsProvider::Claude),
+            "alma" => Some(StatsProvider::Alma),
             "codex" => Some(StatsProvider::Codex),
             "forgecode" => Some(StatsProvider::ForgeCode),
             "opencode" => Some(StatsProvider::OpenCode),
@@ -254,6 +258,8 @@ fn parse_active_stats_providers(active_providers: Option<Vec<String>>) -> HashSe
 fn detect_project_provider(project_path: &str) -> StatsProvider {
     if project_path.starts_with("codex://") {
         StatsProvider::Codex
+    } else if project_path.starts_with("alma://") {
+        StatsProvider::Alma
     } else if project_path.starts_with("forgecode://") {
         StatsProvider::ForgeCode
     } else if project_path.starts_with("opencode://") {
@@ -269,6 +275,10 @@ fn detect_project_provider(project_path: &str) -> StatsProvider {
 fn detect_session_provider(session_path: &str) -> StatsProvider {
     if session_path.starts_with("opencode://") {
         return StatsProvider::OpenCode;
+    }
+
+    if session_path.starts_with("alma://") {
+        return StatsProvider::Alma;
     }
 
     if is_antigravity_path(session_path) {
@@ -966,6 +976,7 @@ fn collect_provider_global_file_stats(
     }
 
     let projects = match provider {
+        StatsProvider::Alma => providers::alma::scan_projects().unwrap_or_default(),
         StatsProvider::Codex => providers::codex::scan_projects().unwrap_or_default(),
         StatsProvider::ForgeCode => providers::forgecode::scan_projects().unwrap_or_default(),
         StatsProvider::OpenCode => providers::opencode::scan_projects().unwrap_or_default(),
@@ -974,6 +985,7 @@ fn collect_provider_global_file_stats(
     };
 
     let provider_tag = match provider {
+        StatsProvider::Alma => "alma",
         StatsProvider::Codex => "codex",
         StatsProvider::ForgeCode => "forgecode",
         StatsProvider::OpenCode => "opencode",
@@ -989,6 +1001,7 @@ fn collect_provider_global_file_stats(
         project_keys.insert(format!("{provider_tag}:{}", project.path));
 
         let sessions = match provider {
+            StatsProvider::Alma => providers::alma::load_sessions(&project.path, false),
             StatsProvider::Codex => providers::codex::load_sessions(&project.path, false),
             StatsProvider::ForgeCode => providers::forgecode::load_sessions(&project.path, false),
             StatsProvider::OpenCode => providers::opencode::load_sessions(&project.path, false),
@@ -1009,6 +1022,7 @@ fn collect_provider_global_file_stats(
         .par_iter()
         .filter_map(|(project_name, file_path)| {
             let messages = match provider {
+                StatsProvider::Alma => providers::alma::load_messages(file_path),
                 StatsProvider::Codex => providers::codex::load_messages(file_path),
                 StatsProvider::ForgeCode => providers::forgecode::load_messages(file_path),
                 StatsProvider::OpenCode => providers::opencode::load_messages(file_path),
@@ -1575,6 +1589,17 @@ fn build_tool_usage_stats(tool_usage: HashMap<String, (u32, u32)>) -> Vec<ToolUs
 /// Resolve the display name for a provider project path.
 fn resolve_provider_project_name(provider: StatsProvider, project_path: &str) -> String {
     match provider {
+        StatsProvider::Alma => {
+            if let Ok(projects) = providers::alma::scan_projects() {
+                if let Some(project) = projects.into_iter().find(|p| p.path == project_path) {
+                    return project.name;
+                }
+            }
+            project_path
+                .strip_prefix("alma://workspace/")
+                .unwrap_or(project_path)
+                .to_string()
+        }
         StatsProvider::Claude => PathBuf::from(project_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -1629,6 +1654,18 @@ fn resolve_provider_project_name_from_session(
     session_path: &str,
 ) -> String {
     match provider {
+        StatsProvider::Alma => {
+            if let Ok(projects) = providers::alma::scan_projects() {
+                for project in projects {
+                    if let Ok(sessions) = providers::alma::load_sessions(&project.path, false) {
+                        if sessions.iter().any(|s| s.file_path == session_path) {
+                            return project.name;
+                        }
+                    }
+                }
+            }
+            "Alma".to_string()
+        }
         StatsProvider::ForgeCode => {
             let workspace_id = session_path
                 .strip_prefix("forgecode-db://workspace/")
@@ -1669,6 +1706,7 @@ fn load_provider_sessions_for_stats(
     project_path: &str,
 ) -> Result<Vec<crate::models::ClaudeSession>, String> {
     match provider {
+        StatsProvider::Alma => providers::alma::load_sessions(project_path, false),
         StatsProvider::Codex => providers::codex::load_sessions(project_path, false),
         StatsProvider::ForgeCode => providers::forgecode::load_sessions(project_path, false),
         StatsProvider::OpenCode => providers::opencode::load_sessions(project_path, false),
@@ -1685,6 +1723,7 @@ fn load_provider_messages_for_stats(
     session: &crate::models::ClaudeSession,
 ) -> Result<Vec<ClaudeMessage>, String> {
     match provider {
+        StatsProvider::Alma => providers::alma::load_messages(&session.file_path),
         StatsProvider::Codex => providers::codex::load_messages(&session.file_path),
         StatsProvider::ForgeCode => providers::forgecode::load_messages(&session.file_path),
         StatsProvider::OpenCode => providers::opencode::load_messages(&session.file_path),
@@ -2429,6 +2468,7 @@ pub async fn get_session_token_stats(
         }
 
         let messages = match provider {
+            StatsProvider::Alma => providers::alma::load_messages(&session_path)?,
             StatsProvider::Codex => providers::codex::load_messages(&session_path)?,
             StatsProvider::ForgeCode => providers::forgecode::load_messages(&session_path)?,
             StatsProvider::OpenCode => providers::opencode::load_messages(&session_path)?,
@@ -3278,6 +3318,13 @@ pub async fn get_global_stats_summary(
         file_stats.extend(codex_stats);
     }
 
+    if providers_to_include.contains(&StatsProvider::Alma) {
+        let (alma_stats, alma_projects) =
+            collect_provider_global_file_stats(StatsProvider::Alma, mode, s_ref, e_ref);
+        project_names.extend(alma_projects);
+        file_stats.extend(alma_stats);
+    }
+
     if providers_to_include.contains(&StatsProvider::ForgeCode) {
         let (forgecode_stats, forgecode_projects) =
             collect_provider_global_file_stats(StatsProvider::ForgeCode, mode, s_ref, e_ref);
@@ -4086,6 +4133,10 @@ mod tests {
             StatsProvider::Codex
         );
         assert_eq!(
+            detect_project_provider("alma://workspace/ws-1"),
+            StatsProvider::Alma
+        );
+        assert_eq!(
             detect_project_provider("forgecode://workspace/workspace-alpha"),
             StatsProvider::ForgeCode
         );
@@ -4127,6 +4178,10 @@ mod tests {
             StatsProvider::OpenCode
         );
         assert_eq!(
+            detect_session_provider("alma://thread/thread_1"),
+            StatsProvider::Alma
+        );
+        assert_eq!(
             detect_session_provider(
                 "/Users/jack/.codex/sessions/2026/02/20/rollout-2026-02-20T11-04-52-1234.jsonl"
             ),
@@ -4158,6 +4213,7 @@ mod tests {
     fn test_parse_active_stats_providers_defaults_to_all() {
         let providers = parse_active_stats_providers(None);
         assert!(providers.contains(&StatsProvider::Claude));
+        assert!(providers.contains(&StatsProvider::Alma));
         assert!(providers.contains(&StatsProvider::Codex));
         assert!(providers.contains(&StatsProvider::ForgeCode));
         assert!(providers.contains(&StatsProvider::OpenCode));
@@ -4193,6 +4249,14 @@ mod tests {
         let providers = parse_active_stats_providers(Some(vec!["forgecode".to_string()]));
         assert_eq!(providers.len(), 1);
         assert!(providers.contains(&StatsProvider::ForgeCode));
+    }
+
+    #[test]
+    /// Verify parse active stats providers supports Alma.
+    fn test_parse_active_stats_providers_supports_alma() {
+        let providers = parse_active_stats_providers(Some(vec!["alma".to_string()]));
+        assert_eq!(providers.len(), 1);
+        assert!(providers.contains(&StatsProvider::Alma));
     }
 
     #[test]
