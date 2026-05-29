@@ -55,29 +55,42 @@ pub fn detect() -> Option<ProviderInfo> {
 /// Lookup precedence:
 /// 1. `$ALMA_HOME`
 /// 2. Windows `%APPDATA%\alma`
-/// 3. `~/.alma`
+/// 3. macOS `~/Library/Application Support/alma`
+/// 4. `~/.alma`
 pub fn get_base_path() -> Option<String> {
+    let candidates = base_path_candidates();
+    candidates
+        .iter()
+        .find(|path| path.join(DB_FILE).is_file())
+        .or_else(|| candidates.iter().find(|path| path.exists()))
+        .map(|path| path.to_string_lossy().to_string())
+}
+
+fn base_path_candidates() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
     if let Ok(home) = std::env::var("ALMA_HOME") {
-        let path = PathBuf::from(&home);
-        if path.exists() {
-            return Some(path.to_string_lossy().to_string());
-        }
+        paths.push(PathBuf::from(home));
     }
 
     if let Ok(appdata) = std::env::var("APPDATA") {
-        let path = PathBuf::from(appdata).join("alma");
-        if path.exists() {
-            return Some(path.to_string_lossy().to_string());
-        }
+        paths.push(PathBuf::from(appdata).join("alma"));
     }
 
-    let home = dirs::home_dir()?;
-    let path = home.join(".alma");
-    if path.exists() {
-        Some(path.to_string_lossy().to_string())
-    } else {
-        None
+    if let Some(home) = dirs::home_dir() {
+        paths.extend(home_base_path_candidates(&home));
     }
+
+    paths
+}
+
+fn home_base_path_candidates(home: &Path) -> [PathBuf; 2] {
+    [
+        home.join("Library")
+            .join("Application Support")
+            .join("alma"),
+        home.join(".alma"),
+    ]
 }
 
 /// Scan Alma workspaces as projects.
@@ -672,6 +685,20 @@ mod tests {
         assert_eq!(tool_use.unwrap()["name"], "Bash");
         assert_eq!(tool_result.unwrap()["tool_use_id"], "call_1");
         assert!(!has_error);
+    }
+
+    #[test]
+    fn includes_macos_application_support_before_legacy_home_dir() {
+        let home = Path::new("/Users/alice");
+        let candidates = home_base_path_candidates(home);
+
+        assert_eq!(
+            candidates[0],
+            home.join("Library")
+                .join("Application Support")
+                .join("alma")
+        );
+        assert_eq!(candidates[1], home.join(".alma"));
     }
 
     #[test]
